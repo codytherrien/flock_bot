@@ -39,6 +39,7 @@ def submit_trade(trade_account, stock):
         side = 'sell'
 
     qty = float(trade_account.account.equity) // (STOCKS_HELD*stock.min_bars[-1]['c'])
+    #print(f"Submitting trade {stock.symbol} at {datetime.datetime.now().hour}:{datetime.datetime.now().minute}")
     try:
         trade_account.api.submit_order(
             symbol = stock.symbol,
@@ -54,6 +55,7 @@ def submit_trade(trade_account, stock):
     return False
 
 def trade_stage(high_volume_stocks):
+    #print("Market Open")
     trade_account = Account(list(high_volume_stocks.keys()))
 
     while trade_account.market_open_flag:
@@ -73,6 +75,7 @@ def trade_stage(high_volume_stocks):
         if datetime.datetime.today().day == trade_account.last_time.day:
             return
         trade_account.last_time = datetime.datetime.today()
+        #print("Past Day Check")
 
         for s1 in high_volume_stocks.keys():
             bars1 = high_volume_stocks[s1].day_bars
@@ -97,6 +100,7 @@ def trade_stage(high_volume_stocks):
             
         stocks_to_hold = sorted(high_volume_stocks.values(), key=lambda x: abs(x.ave_ratio), reverse=True)[:5]
         
+        ##print("Past Stock analysis")
         positions = trade_account.api.list_positions()
         held_symbols = [x.symbol for x in stocks_to_hold]
         kept_positions = {}
@@ -115,10 +119,29 @@ def trade_stage(high_volume_stocks):
                     )
             else:
                 kept_positions[p.symbol] = p.qty
+        #print("Entering order submit stage")
         for stock in stocks_to_hold.values():
             if stock.symbol not in kept_positions.keys():
                 submit_trade(trade_account, stock)
-            elif kept_positions[stock.symbol] <= 0:
+            elif stock.ave_ratio < -THRESHOLD and kept_positions[stock.symbol] <= 0:
+                if kept_positions[stock.symbol] < 0:
+                    trade_account.api.submit_order(
+                        symbol = stock.symbol,
+                        qty = abs(int(kept_positions[stock.symbol])),
+                        side = 'buy',
+                        type = 'market',
+                        time_in_force = 'day'
+                    )
+                submit_trade(trade_account, stock)
+            elif stock.ave_ratio > THRESHOLD and kept_positions[stock.symbol] >= 0:
+                if kept_positions[stock.symbol] > 0:
+                    trade_account.api.submit_order(
+                        symbol = stock.symbol,
+                        qty = abs(int(kept_positions[stock.symbol])),
+                        side = 'sell',
+                        type = 'market',
+                        time_in_force = 'day'
+                    )
                 submit_trade(trade_account, stock)
             
                         
@@ -159,6 +182,7 @@ def main():
     api = tradeapi.REST(keys, keys_to_the_vip, paper_products)
     high_volume_stocks = {}
     first_day = datetime.datetime.today() - datetime.timedelta(days=6)
+    #print("Loading stock data")
     for line in lines:
         stock_data = StockData(line)
         stock_data.min_bars = df_to_bars(yf.Ticker(line).history(start=first_day.strftime('%Y-%m-%d'), interval='1m'))
@@ -170,6 +194,7 @@ def main():
         sleeping_stage(api)
     
         trade_stage(high_volume_stocks)
+        #print(f"Trading day ended at {datetime.datetime.now().hour}:{datetime.datetime.now().minute}")
 
         for stock in high_volume_stocks.keys():
             high_volume_stocks[stock].day_bars = Group(high_volume_stocks[stock].min_bars, 390)
