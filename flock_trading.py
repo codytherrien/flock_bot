@@ -16,7 +16,6 @@ STOCKS_HELD = 5
 THRESHOLD = 0
 
 def sleeping_stage(api):
-        print('Waiting for the market to open')
         market_close_flag = True
         while datetime.datetime.now().hour < 4:
             time.sleep(7200) # Sleeps for 2 hours
@@ -63,7 +62,6 @@ def submit_trade(trade_account, stock):
         side = 'sell'
 
     qty = float(trade_account.account.equity) // (STOCKS_HELD*stock.min_bars[-1]['c'])
-    #print(f"Submitting trade {stock.symbol} at {datetime.datetime.now().hour}:{datetime.datetime.now().minute}")
     try:
         trade_account.api.submit_order(
             symbol = stock.symbol,
@@ -96,10 +94,9 @@ def make_trades(trade_account, stocks_to_hold):
                     time_in_force = 'day'
                 )
         else:
-            kept_positions[p.symbol] = p.qty
+            kept_positions[p.symbol] = int(p.qty)
 
-    #print("Entering order submit stage")
-    for stock in stocks_to_hold.values():
+    for stock in stocks_to_hold:
         if stock.symbol not in kept_positions.keys():
             submit_trade(trade_account, stock)
         elif stock.ave_ratio < -THRESHOLD and kept_positions[stock.symbol] <= 0:
@@ -124,7 +121,6 @@ def make_trades(trade_account, stocks_to_hold):
             submit_trade(trade_account, stock)
 
 def trade_stage(high_volume_stocks):
-    #print("Market Open")
     trade_account = Account(list(high_volume_stocks.keys()))
 
     while trade_account.market_open_flag:
@@ -141,20 +137,18 @@ def trade_stage(high_volume_stocks):
             if len(high_volume_stocks[last_bar['S']].min_bars) > PERIOD * 390:
                     high_volume_stocks[last_bar['S']].min_bars.pop(0)
 
-        if datetime.datetime.today().day == trade_account.last_time.day:
-            return
-        trade_account.last_time = datetime.datetime.today()
-        #print("Past Day Check")
-            
-        stocks_to_hold = get_hold_stocks(high_volume_stocks)
-        
-        ##print("Past Stock analysis")
-        make_trades(trade_account, stocks_to_hold)
-              
-        if datetime.datetime.now().hour == 21: # set hour to 12 for local machine 20 for cloud
+        if datetime.datetime.now().hour == 13: # set hour to 12 for local machine 20 for cloud
             trade_account.market_open_flag = False
             #if trade submit trade
 
+        if datetime.datetime.today().day == trade_account.last_time.day:
+            continue
+        trade_account.last_time = datetime.datetime.today()
+            
+        stocks_to_hold = get_hold_stocks(high_volume_stocks)
+        
+        make_trades(trade_account, stocks_to_hold)
+        
     return trade_account
 
 
@@ -188,7 +182,6 @@ def main():
     api = tradeapi.REST(keys, keys_to_the_vip, paper_products)
     high_volume_stocks = {}
     first_day = datetime.datetime.today() - datetime.timedelta(days=6)
-    #print("Loading stock data")
     for line in lines:
         stock_data = StockData(line)
         stock_data.min_bars = df_to_bars(yf.Ticker(line).history(start=first_day.strftime('%Y-%m-%d'), interval='1m'))
@@ -197,10 +190,9 @@ def main():
     
     while datetime.datetime.today().weekday() != 5:
         api = tradeapi.REST(keys, keys_to_the_vip, paper_products)
-        sleeping_stage(api)
+        #sleeping_stage(api)
     
         trade_stage(high_volume_stocks)
-        #print(f"Trading day ended at {datetime.datetime.now().hour}:{datetime.datetime.now().minute}")
 
         for stock in high_volume_stocks.keys():
             high_volume_stocks[stock].day_bars = Group(high_volume_stocks[stock].min_bars, 390)
