@@ -137,7 +137,7 @@ def trade_stage(high_volume_stocks):
             if len(high_volume_stocks[last_bar['S']].min_bars) > PERIOD * 390:
                     high_volume_stocks[last_bar['S']].min_bars.pop(0)
 
-        if datetime.datetime.now().hour == 13: # set hour to 12 for local machine 20 for cloud
+        if datetime.datetime.now().hour == 21: # set hour to 13 for local machine 21 for cloud
             trade_account.market_open_flag = False
             #if trade submit trade
 
@@ -190,7 +190,7 @@ def main():
     
     while datetime.datetime.today().weekday() != 5:
         api = tradeapi.REST(keys, keys_to_the_vip, paper_products)
-        #sleeping_stage(api)
+        sleeping_stage(api)
     
         trade_stage(high_volume_stocks)
 
