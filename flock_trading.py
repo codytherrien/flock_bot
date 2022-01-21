@@ -54,25 +54,35 @@ def get_hold_stocks(high_volume_stocks):
             
     return sorted(high_volume_stocks.values(), key=lambda x: abs(x.ave_ratio), reverse=True)[:5]
 
-def submit_trade(trade_account, stock):
+def submit_trade(trade_account, stock, kept_positions):
     trade_account.reconnect()
-    if stock.ave_ratio < -THRESHOLD:
-        side = 'buy'
-    else:
-        side = 'sell'
+    qty = 0
 
-    qty = float(trade_account.account.equity) // (STOCKS_HELD*stock.min_bars[-1]['c'])
-    try:
-        trade_account.api.submit_order(
-            symbol = stock.symbol,
-            qty = int(qty),
-            side = side,
-            type='market',
-            time_in_force='gtc'
-        )
-        return True
-    except:
-        print("Order Failed")
+    if stock.symbol not in kept_positions.keys():
+        if stock.ave_ratio < -THRESHOLD:
+            side = 'buy'
+        else:
+            side = 'sell'
+        qty = float(trade_account.account.equity) // (STOCKS_HELD*stock.min_bars[-1]['c'])
+    elif stock.ave_ratio < -THRESHOLD and kept_positions[stock.symbol] <= 0:
+        side = 'buy'
+        qty = float(trade_account.account.equity) // (STOCKS_HELD*stock.min_bars[-1]['c']) + abs(kept_positions[stock])
+    elif stock.ave_ratio > THRESHOLD and kept_positions[stock.symbol] >= 0:
+        side = 'sell'
+        qty = float(trade_account.account.equity) // (STOCKS_HELD*stock.min_bars[-1]['c']) + abs(kept_positions[stock])
+
+    if qty != 0:
+        try:
+            trade_account.api.submit_order(
+                symbol = stock.symbol,
+                qty = int(qty),
+                side = side,
+                type='market',
+                time_in_force='gtc'
+            )
+            return True
+        except:
+            print("Order Failed")
     
     return False
 
@@ -97,28 +107,7 @@ def make_trades(trade_account, stocks_to_hold):
             kept_positions[p.symbol] = int(p.qty)
 
     for stock in stocks_to_hold:
-        if stock.symbol not in kept_positions.keys():
-            submit_trade(trade_account, stock)
-        elif stock.ave_ratio < -THRESHOLD and kept_positions[stock.symbol] <= 0:
-            if kept_positions[stock.symbol] < 0:
-                trade_account.api.submit_order(
-                    symbol = stock.symbol,
-                    qty = abs(int(kept_positions[stock.symbol])),
-                    side = 'buy',
-                    type = 'market',
-                    time_in_force = 'day'
-                )
-            submit_trade(trade_account, stock)
-        elif stock.ave_ratio > THRESHOLD and kept_positions[stock.symbol] >= 0:
-            if kept_positions[stock.symbol] > 0:
-                trade_account.api.submit_order(
-                    symbol = stock.symbol,
-                    qty = abs(int(kept_positions[stock.symbol])),
-                    side = 'sell',
-                    type = 'market',
-                    time_in_force = 'day'
-                )
-            submit_trade(trade_account, stock)
+        submit_trade(trade_account, stock, kept_positions)
 
 def trade_stage(high_volume_stocks):
     trade_account = Account(list(high_volume_stocks.keys()))
