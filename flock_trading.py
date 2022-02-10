@@ -187,6 +187,11 @@ def main():
             high_volume_stocks[stock].day_bars = Group(high_volume_stocks[stock].min_bars, 390)
 
         time.sleep(21600) # Sleep for 6 hours
+        first_day = datetime.datetime.today() - datetime.timedelta(days=6)
+        for line in lines:
+            stock_data = StockData(line)
+            stock_data.min_bars = df_to_bars(yf.Ticker(line).history(start=first_day.strftime('%Y-%m-%d'), interval='1m'))
+            stock_data.day_bars = df_to_bars(yf.Ticker(line).history(start=first_day.strftime('%Y-%m-%d'), interval='1d'))
     
 
 if __name__ == "__main__":
