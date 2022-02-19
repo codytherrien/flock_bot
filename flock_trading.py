@@ -63,13 +63,22 @@ def submit_trade(trade_account, stock, kept_positions):
             side = 'buy'
         else:
             side = 'sell'
-        qty = float(trade_account.account.equity) // (STOCKS_HELD*stock.min_bars[-1]['c'])
+        try:
+            qty = float(trade_account.account.equity) // (STOCKS_HELD*stock.min_bars[-1]['c'])
+        except:
+            qty = float(trade_account.account.equity) // (STOCKS_HELD*stock.day_bars[-1]['c'])
     elif stock.ave_ratio < -THRESHOLD and kept_positions[stock.symbol] <= 0:
         side = 'buy'
-        qty = float(trade_account.account.equity) // (STOCKS_HELD*stock.min_bars[-1]['c']) + abs(kept_positions[stock])
+        try:
+            qty = float(trade_account.account.equity) // (STOCKS_HELD*stock.min_bars[-1]['c']) + abs(kept_positions[stock])
+        except:
+            qty = float(trade_account.account.equity) // (STOCKS_HELD*stock.day_bars[-1]['c']) + abs(kept_positions[stock])
     elif stock.ave_ratio > THRESHOLD and kept_positions[stock.symbol] >= 0:
         side = 'sell'
-        qty = float(trade_account.account.equity) // (STOCKS_HELD*stock.min_bars[-1]['c']) + abs(kept_positions[stock])
+        try:
+            qty = float(trade_account.account.equity) // (STOCKS_HELD*stock.min_bars[-1]['c']) + abs(kept_positions[stock])
+        except:
+            qty = float(trade_account.account.equity) // (STOCKS_HELD*stock.day_bars[-1]['c']) + abs(kept_positions[stock])
 
     if qty != 0:
         try:
