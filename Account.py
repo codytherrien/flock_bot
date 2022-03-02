@@ -7,21 +7,22 @@ import ast
 import datetime
 
 class Account:
-    def __init__(self, stock_list):
-       self.reconnect_flag = True
-       self.market_open_flag = True
-       self.stream_flag = True
-       self.account_update_flag = True
-       self.ws = None
-       self.api = None
-       self.account = None
-       self.curr_cash = None
-       self.buying_power = None
-       self.stock_list = stock_list
-       self.reconnect()
-       self.stream_connect()
-       self.morning_flag = True
-       self.last_time = datetime.datetime.strptime('2021-01-01', '%Y-%m-%d')
+    def __init__(self, stock_list, stream_connect=True):
+        self.reconnect_flag = True
+        self.market_open_flag = True
+        self.stream_flag = True
+        self.account_update_flag = True
+        self.ws = None
+        self.api = None
+        self.account = None
+        self.curr_cash = None
+        self.buying_power = None
+        self.stock_list = stock_list
+        self.reconnect()
+        if stream_connect:
+            self.stream_connect()
+        self.morning_flag = True
+        self.last_time = datetime.datetime.strptime('2021-01-01', '%Y-%m-%d')
 
     def reconnect(self):
         self.reconnect_flag = True
