@@ -54,8 +54,8 @@ class Account:
         while self.stream_flag:
             #try:
             #self.ws = create_connection("wss://stream.data.alpaca.markets/v1beta1/crypto")
-            #self.ws = create_connection("wss://stream.data.alpaca.markets/v2/iex")
-            self.ws = create_connection("wss://stream.data.alpaca.markets/v2/sip")
+            self.ws = create_connection("wss://stream.data.alpaca.markets/v2/iex")
+            #self.ws = create_connection("wss://stream.data.alpaca.markets/v2/sip")
             print(self.ws.recv())
             self.on_open()
             message = self.ws.recv()
